@@ -21,7 +21,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
     <style>
-        /* 這裡保留你原本所有的 CSS 樣式 */
         body { background-color: #fcfcfc; font-family: 'Noto Sans TC', sans-serif; color: #333; }
         .nav-tabs .nav-link { color: #555; border: none; padding: 1rem 2rem; font-weight: 500; }
         .nav-tabs .nav-link.active { color: #000; border-bottom: 3px solid #000; background: none; }
@@ -65,7 +64,7 @@
             <div class="tab-pane fade" id="about-pane" role="tabpanel">
                 <div class="row align-items-center">
                     <div class="col-md-5 text-center mb-4">
-                        <img src="https://paint-lzie.onrender.com/images/S__50290851.jpg" class="artist-img" alt="胡敏慧畫家">
+                        <img src="/static/images/S__50290851.jpg" class="artist-img" alt="胡敏慧畫家">
                     </div>
                     <div class="col-md-7">
                         <h2 class="mb-3">胡敏慧</h2>
@@ -99,7 +98,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // 請確保這個 Sheet ID 是正確的，且已「發佈到網路 (CSV)」
             const sheetId = '1EPiV8x-LYpPA0loGib2Se69tsdhvHLrZ_pvLZW65USo';
             const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
 
@@ -117,14 +115,22 @@
                     paintings.forEach((item, index) => {
                         let soldOutTag = (item.finish === 'y') ? `<span class="sold-out-badge">已蒙收藏</span>` : '';
                         
-                        // 處理圖片路徑：如果試算表內寫的是 /static/uploads/... 程式會正確抓取
-                        let imgPath = item.image_url;
+                        // --- 強化的圖片路徑處理邏輯 ---
+                        let imgPath = item.image_url ? item.image_url.trim() : "";
+                        
+                        // 如果路徑不包含 http (外部連結) 且不包含 /static/ (完整路徑)
+                        // 就自動幫它補上 /static/images/ 前綴
+                        if (imgPath && !imgPath.startsWith('http') && !imgPath.startsWith('/static/')) {
+                            // 去掉可能重複的 images/ 字眼
+                            imgPath = imgPath.replace(/^images\//, "");
+                            imgPath = '/static/images/' + imgPath;
+                        }
 
                         cardsHtml += `
                             <div class="col-md-4 col-sm-6">
                                 <div class="card portfolio-card shadow-sm" data-bs-toggle="modal" data-bs-target="#detailModal${index}">
                                     <div class="img-container">
-                                        <img src="${imgPath}" alt="${item.name}">
+                                        <img src="${imgPath}" alt="${item.name}" onerror="this.src='https://placehold.co/400x400?text=Image+Not+Found'">
                                     </div>
                                     <div class="card-info">
                                         <p class="painting-name">${item.name}${soldOutTag}</p>
@@ -143,7 +149,7 @@
                                         <div class="modal-body p-4">
                                             <div class="row">
                                                 <div class="col-md-6 text-center">
-                                                    <img src="${imgPath}" class="img-fluid rounded shadow-sm" style="max-height: 500px;">
+                                                    <img src="${imgPath}" class="img-fluid rounded shadow-sm" style="max-height: 500px;" onerror="this.src='https://placehold.co/400x400?text=Image+Not+Found'">
                                                 </div>
                                                 <div class="col-md-6">
                                                     <div class="price-tag mb-3">${item.price || ''}</div>
