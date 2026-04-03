@@ -2,7 +2,6 @@
 <html lang="zh-Hant-TW">
 <head>
     <meta charset="UTF-8">
-    <base href="/">
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -10,8 +9,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <meta name="description" content="Helen Hu Artlist｜胡敏慧的藝廊：貓也喜歡的畫、淺藍色的夢。作品展示、畫家介紹與匯款資訊。">
+    <link rel="canonical" href="https://paint-lzie.onrender.com/">
     <title>Helen Hu Artlist</title>
     
+    <meta property="og:locale" content="zh_TW">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Helen Hu Artlist">
+    <meta property="og:description" content="胡敏慧的藝廊：貓也喜歡的畫、淺藍色的夢。">
+    <meta property="og:url" content="https://paint-lzie.onrender.com/">
+    <meta property="og:image" content="https://paintadmin.onrender.com/static/images/og-cover.jpg">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -24,16 +31,18 @@
         body { background-color: #fcfcfc; font-family: 'Noto Sans TC', sans-serif; color: #333; }
         .nav-tabs .nav-link { color: #555; border: none; padding: 1rem 2rem; font-weight: 500; }
         .nav-tabs .nav-link.active { color: #000; border-bottom: 3px solid #000; background: none; }
-        .portfolio-card { transition: all 0.3s ease; border: none; cursor: pointer; overflow: hidden; background: #fff; height: 100%; display: flex; flex-direction: column; }
-        .portfolio-card:hover { transform: translateY(-8px); box-shadow: 0 10px 20px rgba(0,0,0,0.12) !important; }
+        .portfolio-card { transition: all 0.3s ease; border: none; cursor: pointer; background: #fff; height: 100%; display: flex; flex-direction: column; }
+        .portfolio-card:hover { transform: translateY(-8px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
         .img-container { height: 380px; display: flex; align-items: center; justify-content: center; background-color: #f9f9f9; overflow: hidden; padding: 5px; }
-        .portfolio-card img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; display: block; }
-        .card-info { padding: 15px 10px; background-color: #fff; margin-top: auto; }
-        .card-info .painting-name { font-size: 1.05rem; font-weight: 600; color: #222; margin-bottom: 0; text-align: center; }
-        .sold-out-badge { background-color: #b0413e; color: #ffffff; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px; margin-left: 8px; display: inline-block; }
+        .img-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .card-info { padding: 15px 10px; background-color: #fff; text-align: center; }
+        .painting-name { font-size: 1.05rem; font-weight: 600; margin-bottom: 0; }
+        .sold-out-badge { background-color: #b0413e; color: #fff; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px; margin-left: 8px; }
         .artist-img { max-width: 300px; border-radius: 50%; border: 8px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .art-description { border-left: 4px solid #198754; padding-left: 1rem; background-color: #f8f9fa; font-style: italic; white-space: pre-line; }
+        .art-description { border-left: 4px solid #198754; padding: 1rem; background-color: #f8f9fa; font-style: italic; white-space: pre-line; }
         .price-tag { color: #dc3545; font-weight: bold; font-size: 1.5rem; }
+        .social-link { transition: transform 0.2s ease; display: inline-block; text-decoration: none; }
+        .social-link:hover { transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -42,7 +51,6 @@
         <header class="text-center mb-5">
             <h1 class="fw-bold">Helen Hu Artlist</h1>
             <p class="text-muted">探索色彩與靈魂的對話</p>
-            <a href="/login" class="btn btn-sm btn-light text-muted" style="font-size: 10px;">管理登入</a>
         </header>
 
         <ul class="nav nav-tabs justify-content-center" id="artistTab" role="tablist">
@@ -64,24 +72,29 @@
             <div class="tab-pane fade" id="about-pane" role="tabpanel">
                 <div class="row align-items-center">
                     <div class="col-md-5 text-center mb-4">
-                        <img src="/static/images/S__50290851.jpg" class="artist-img" alt="胡敏慧畫家">
+                        <img src="https://paintadmin.onrender.com/static/images/S__50290851.jpg" class="artist-img" alt="胡敏慧" onerror="this.src='https://placehold.co/300x300?text=Helen+Hu'">
                     </div>
                     <div class="col-md-7">
                         <h2 class="mb-3">胡敏慧</h2>
                         <p>願我的畫可以帶給您內心的寧靜，溫暖的療癒，充沛的力量。</p>
                         <p>讓我在您心裡種下一顆種子，並都能擁抱它茁長後的愉悅芳華💝</p>
+                        <div class="mt-4">
+                            <a href="https://line.me/ti/p/2NZ3g9WyfB" target="_blank" class="social-link me-3"><i class="fa-brands fa-line fa-2x" style="color: #06C755;"></i></a>
+                            <a href="https://www.facebook.com/helen.hu.1042" target="_blank" class="social-link me-3"><i class="fa-brands fa-facebook fa-2x" style="color: #1877F2;"></i></a>
+                            <a href="mailto:hooli300h@yahoo.com.tw" class="social-link"><i class="fa-solid fa-envelope fa-2x" style="color: #333;"></i></a>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="tab-pane fade" id="payment-pane" role="tabpanel">
                 <div class="row justify-content-center">
-                    <div class="col-lg-8 card p-4 shadow-sm">
+                    <div class="col-lg-8 card p-4 border-0 shadow-sm rounded-4">
                         <h3 class="fw-bold mb-4">【匯款資訊】</h3>
                         <p>郵局代號：<code>700</code></p>
                         <p>帳號：<code>0311771-0085840</code></p>
                         <p>戶名：胡敏慧</p>
-                        <div class="alert alert-warning">匯款後請來信或 LINE 告知帳號末五碼，感謝支持！</div>
+                        <div class="alert alert-warning mt-3">匯款後請提供帳號後五碼、姓名與聯絡電話，感謝支持！</div>
                     </div>
                 </div>
             </div>
@@ -91,7 +104,7 @@
     <div id="modal-container"></div>
 
     <footer class="text-center py-4 border-top mt-5">
-        <p class="text-muted small">&copy; 2026 Helen Hu Artlist. All Rights Reserved.</p>
+        <p class="text-muted small">&copy; 2026 Helen Hu Artlist. Designed by Chris.</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -104,36 +117,47 @@
             const portfolioContainer = document.getElementById('portfolio-container');
             const modalContainer = document.getElementById('modal-container');
 
+            // 輔助函式：將路徑修正為 paintadmin 的網址
+            function formatImagePath(rawPath) {
+                if (!rawPath) return 'https://placehold.co/600x400?text=No+Image';
+                let path = rawPath.trim();
+                
+                // 如果已經是完整網址，直接回傳
+                if (path.startsWith('http')) return path;
+
+                // 移除手寫的多餘路徑
+                let fileName = path.replace(/^\/?static\/images\//, '')
+                                   .replace(/^\/?images\//, '')
+                                   .replace(/^\//, '');
+
+                // 強制指向您的管理網站圖片路徑
+                return `https://paintadmin.onrender.com/static/images/${fileName}`;
+            }
+
             Papa.parse(sheetUrl, {
                 download: true,
                 header: true,
                 complete: function (results) {
-                    let paintings = results.data.filter(item => item.name);
+                    let paintings = (results.data || []).filter(item => item.name && item.name.trim() !== '');
+                    
+                    paintings.sort((a, b) => new Date(b.display_date || 0) - new Date(a.display_date || 0));
+
                     let cardsHtml = '';
                     let modalsHtml = '';
 
                     paintings.forEach((item, index) => {
-                        let soldOutTag = (item.finish === 'y') ? `<span class="sold-out-badge">已蒙收藏</span>` : '';
-                        
-                        // --- 強化的圖片路徑處理邏輯 ---
-                        let imgPath = item.image_url ? item.image_url.trim() : "";
-                        
-                        // 如果路徑不包含 http (外部連結) 且不包含 /static/ (完整路徑)
-                        // 就自動幫它補上 /static/images/ 前綴
-                        if (imgPath && !imgPath.startsWith('http') && !imgPath.startsWith('/static/')) {
-                            // 去掉可能重複的 images/ 字眼
-                            imgPath = imgPath.replace(/^images\//, "");
-                            imgPath = '/static/images/' + imgPath;
-                        }
+                        const imgUrl = formatImagePath(item.image_url);
+                        const soldOut = (item.finish && item.finish.toLowerCase() === 'y') ? '<span class="sold-out-badge">已蒙收藏</span>' : '';
+                        const poeticText = item.poetic_text ? item.poetic_text.replace(/\n/g, '<br>') : '';
 
                         cardsHtml += `
                             <div class="col-md-4 col-sm-6">
                                 <div class="card portfolio-card shadow-sm" data-bs-toggle="modal" data-bs-target="#detailModal${index}">
                                     <div class="img-container">
-                                        <img src="${imgPath}" alt="${item.name}" onerror="this.src='https://placehold.co/400x400?text=Image+Not+Found'">
+                                        <img src="${imgUrl}" alt="${item.name}" onerror="this.src='https://placehold.co/400x400?text=圖片路徑錯誤'">
                                     </div>
                                     <div class="card-info">
-                                        <p class="painting-name">${item.name}${soldOutTag}</p>
+                                        <p class="painting-name">${item.name}${soldOut}</p>
                                     </div>
                                 </div>
                             </div>`;
@@ -141,30 +165,34 @@
                         modalsHtml += `
                             <div class="modal fade" id="detailModal${index}" tabindex="-1">
                                 <div class="modal-dialog modal-lg modal-dialog-centered">
-                                    <div class="modal-content">
+                                    <div class="modal-content border-0 shadow-lg">
                                         <div class="modal-header">
                                             <h5 class="modal-title fw-bold">${item.name}</h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                         </div>
                                         <div class="modal-body p-4">
                                             <div class="row">
-                                                <div class="col-md-6 text-center">
-                                                    <img src="${imgPath}" class="img-fluid rounded shadow-sm" style="max-height: 500px;" onerror="this.src='https://placehold.co/400x400?text=Image+Not+Found'">
+                                                <div class="col-md-5 mb-4 mb-md-0 text-center">
+                                                    <img src="${imgUrl}" class="img-fluid rounded shadow-sm" style="max-height: 70vh;" onerror="this.src='https://placehold.co/400x400?text=圖片尚未上傳'">
                                                 </div>
-                                                <div class="col-md-6">
+                                                <div class="col-md-7">
                                                     <div class="price-tag mb-3">${item.price || ''}</div>
-                                                    <p class="mb-1"><strong>尺寸：</strong>${item.size || ''}</p>
-                                                    <p class="mb-3"><strong>媒材：</strong>${item.material || ''}</p>
-                                                    <div class="art-description p-3 rounded small">${item.poetic_text || ''}</div>
+                                                    <p class="small mb-1"><strong>尺寸：</strong>${item.size || ''}</p>
+                                                    <p class="small mb-1"><strong>媒材：</strong>${item.material || ''}</p>
+                                                    <div class="art-description rounded mt-3 small">${poeticText}</div>
                                                 </div>
                                             </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <a href="https://line.me/ti/p/2NZ3g9WyfB" target="_blank" class="btn btn-success btn-sm"><i class="fa-brands fa-line me-1"></i>LINE 詢問</a>
+                                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">關閉</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>`;
                     });
 
-                    portfolioContainer.innerHTML = cardsHtml;
+                    portfolioContainer.innerHTML = cardsHtml || '<div class="text-center py-5 w-100">目前尚無作品資料。</div>';
                     modalContainer.innerHTML = modalsHtml;
                 }
             });
