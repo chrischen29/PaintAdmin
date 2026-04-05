@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 
-# 1. 確保 Flask 知道靜態資料夾在哪裡
+# 1. 確保 Flask 知道靜態資料夾在哪裡AAA
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = 'helen_art_secret_key'
 
