@@ -1,37 +1,32 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 
-app = Flask(__name__)
-app.secret_key = 'helen_art_secret_key'  # 安全加密用
+# 1. 確保 Flask 知道靜態資料夾在哪裡
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+app.secret_key = 'helen_art_secret_key'
 
-# 設定
-ADMIN_PASSWORD = '123'  # 這是你的後台預設密碼，可以自己改
-UPLOAD_FOLDER = 'static/uploads'
+# 2. 使用「絕對路徑」來定位資料夾，避免 Render 找不到位置
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# 我們統一上傳到 static/images，這樣你比較好管理
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'images')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# 自動建立上傳資料夾
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# 自動建立資料夾（如果不存在）
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/')
 def index():
-    # 這裡會讀取你原本的畫廊 HTML
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form.get('password') == ADMIN_PASSWORD:
+        # 這裡檢查密碼
+        if request.form.get('password') == '123': 
             session['logged_in'] = True
             return redirect(url_for('admin'))
-        return "密碼錯誤，請重試。"
-    return '''
-        <form method="post" style="text-align:center; margin-top:100px;">
-            <h2>Helen Hu Art 管理登入</h2>
-            <input type="password" name="password" placeholder="請輸入密碼">
-            <button type="submit">登入</button>
-        </form>
-    '''
+        return "密碼錯誤！"
+    return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
@@ -40,23 +35,33 @@ def admin():
     
     message = ""
     if request.method == 'POST':
-        file = request.files.get('file')
-        if file:
-            path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(path)
-            message = f"成功！圖片網址為: /static/uploads/{file.filename}"
+        if 'file' not in request.files:
+            message = "沒有選擇檔案"
+        else:
+            file = request.files['file']
+            if file.filename == '':
+                message = "檔案名稱為空"
+            else:
+                # 儲存檔案到 static/images
+                try:
+                    filename = file.filename
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                    message = f"✅ 上傳成功！網址請填：/static/images/{filename}"
+                except Exception as e:
+                    message = f"❌ 上傳失敗：{str(e)}"
 
     return f'''
-        <div style="max-width:500px; margin:50px auto; font-family:sans-serif;">
-            <h1>畫廊後台管理</h1>
-            <p style="color:green;">{message}</p>
-            <form method="post" enctype="multipart/form-data">
-                <input type="file" name="file" required>
-                <button type="submit">上傳圖片</button>
+        <div style="max-width:500px; margin:50px auto; font-family:sans-serif; line-height:1.6;">
+            <h2>🎨 Helen Hu Art 後台管理</h2>
+            <p style="color:blue; font-weight:bold;">{message}</p>
+            <form method="post" enctype="multipart/form-data" style="border:1px solid #ccc; padding:20px; border-radius:10px;">
+                <label>選擇畫作圖片：</label><br><br>
+                <input type="file" name="file" accept="image/*" required><br><br>
+                <button type="submit" style="padding:10px 20px; cursor:pointer;">開始上傳</button>
             </form>
             <hr>
-            <p>上傳後，請將網址複製到 Google Sheets 的 image_url 欄位。</p>
-            <a href="/">回首頁</a> | <a href="/logout">登出</a>
+            <p style="font-size:0.9em; color:#666;">提示：上傳後請複製藍色文字處的網址，填入 Google Sheets。</p>
+            <a href="/">回首頁</a> | <a href="/logout">登出後台</a>
         </div>
     '''
 
@@ -64,6 +69,11 @@ def admin():
 def logout():
     session.pop('logged_in', None)
     return redirect(url_for('index'))
+
+# 強制開啟圖片讀取路由，確保 Render 一定能把圖丟出來
+@app.route('/static/images/<path:filename>')
+def serve_images(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
     app.run(debug=True)
