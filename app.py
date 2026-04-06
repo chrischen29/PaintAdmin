@@ -1,89 +1,98 @@
 import os
+import sqlite3
 import requests
 import base64
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 
-app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.secret_key = 'helen_art_secret_key_2026'
-
-# --- 已自動填入你的 ImgBB API Key ---
+app = Flask(__name__)
+app.secret_key = 'helen_art_secret_2026'
 IMGBB_API_KEY = "bebac0016394472c839f571f730b34e1"
+
+# --- 資料庫初始化 ---
+def get_db():
+    db = sqlite3.connect('database.db')
+    db.row_factory = sqlite3.Row
+    return db
+
+def init_db():
+    with get_db() as conn:
+        # 作品表
+        conn.execute('''CREATE TABLE IF NOT EXISTS paintings 
+            (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, price TEXT, size TEXT, 
+             material TEXT, poetic_text TEXT, image_url TEXT, finish TEXT, display_date TEXT)''')
+        # 網站資訊表 (介紹、匯款等)
+        conn.execute('''CREATE TABLE IF NOT EXISTS site_info 
+            (key TEXT PRIMARY KEY, value TEXT)''')
+        
+        # 初始資料 (如果沒資料的話)
+        count = conn.execute('SELECT count(*) FROM site_info').fetchone()[0]
+        if count == 0:
+            default_info = [
+                ('artist_name', '胡敏慧'),
+                ('artist_intro', '願我的畫可以帶給您內心的寧靜...'),
+                ('bank_code', '700'),
+                ('bank_account', '0311771-0085840'),
+                ('bank_user', '胡敏慧')
+            ]
+            conn.executemany('INSERT INTO site_info VALUES (?, ?)', default_info)
+    print("資料庫初始化完成")
+
+init_db()
+
+# --- 路由 ---
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    with get_db() as conn:
+        paintings = conn.execute('SELECT * FROM paintings ORDER BY display_date DESC').fetchall()
+        site_info = {row['key']: row['value'] for row in conn.execute('SELECT * FROM site_info').fetchall()}
+    return render_template('index.html', paintings=paintings, info=site_info)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # 預設管理密碼為 123
         if request.form.get('password') == '123':
             session['logged_in'] = True
             return redirect(url_for('admin'))
-        return "密碼錯誤，請重新輸入。"
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
+    if not session.get('logged_in'): return redirect(url_for('login'))
     
-    message = ""
-    permanent_url = ""
-    
-    if request.method == 'POST':
-        file = request.files.get('file')
-        if file and file.filename != '':
-            try:
-                # 讀取圖片並轉換為 Base64 格式
-                img_stream = file.read()
-                img_base64 = base64.b64encode(img_stream)
+    with get_db() as conn:
+        if request.method == 'POST':
+            action = request.form.get('action')
+            
+            # A. 更新網站基本資訊
+            if action == 'update_info':
+                for key in ['artist_name', 'artist_intro', 'bank_code', 'bank_account', 'bank_user']:
+                    conn.execute('UPDATE site_info SET value = ? WHERE key = ?', (request.form.get(key), key))
+            
+            # B. 新增作品 (包含上傳 ImgBB)
+            elif action == 'add_painting':
+                file = request.files.get('file')
+                img_url = ""
+                if file:
+                    img_base64 = base64.b64encode(file.read())
+                    res = requests.post("https://api.imgbb.com/1/upload", data={"key": IMGBB_API_KEY, "image": img_base64}).json()
+                    if res['success']: img_url = res['data']['url']
                 
-                # 呼叫 ImgBB API 上傳
-                response = requests.post(
-                    "https://api.imgbb.com/1/upload",
-                    data={
-                        "key": IMGBB_API_KEY,
-                        "image": img_base64
-                    }
-                )
-                
-                json_res = response.json()
-                if json_res['success']:
-                    # 取得永久圖片原始網址
-                    permanent_url = json_res['data']['url']
-                    message = "✅ 圖片已成功儲存至雲端！"
-                else:
-                    message = f"❌ 上傳失敗：{json_res['error']['message']}"
-            except Exception as e:
-                message = f"❌ 系統錯誤：{str(e)}"
+                conn.execute('INSERT INTO paintings (name, price, size, material, poetic_text, image_url, finish, display_date) VALUES (?,?,?,?,?,?,?,?)',
+                             (request.form.get('name'), request.form.get('price'), request.form.get('size'), 
+                              request.form.get('material'), request.form.get('poetic_text'), img_url, 
+                              request.form.get('finish'), request.form.get('display_date')))
+            
+            # C. 刪除作品
+            elif action == 'delete_painting':
+                conn.execute('DELETE FROM paintings WHERE id = ?', (request.form.get('id'),))
+            
+            conn.commit()
+            return redirect(url_for('admin'))
 
-    return f'''
-        <div style="max-width:600px; margin:50px auto; font-family:'Noto Sans TC', sans-serif; border:1px solid #eee; padding:40px; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.05);">
-            <h2 style="text-align:center; margin-bottom:30px;">🎨 Helen Hu Art 管理後台</h2>
-            
-            { f'<div style="background:#f4fdf9; padding:20px; border-radius:12px; border:1px solid #ccece0; margin-bottom:30px;">'
-              f'<p style="color:#198754; font-weight:bold; margin-top:0;">{message}</p>'
-              f'<p style="margin-bottom:5px; font-size:0.9em;">請複製下方網址填入 Google Sheets：</p>'
-              f'<code style="word-break:break-all; color:#e83e8c; display:block; background:#white; padding:10px; border:1px solid #ddd; border-radius:5px;">{permanent_url}</code>'
-              f'</div>' if permanent_url else f'<p style="text-align:center; color:#666;">{message}</p>' }
-            
-            <form method="post" enctype="multipart/form-data">
-                <div style="margin-bottom:25px;">
-                    <label style="display:block; margin-bottom:10px; font-weight:600;">選擇要新增的畫作圖片：</label>
-                    <input type="file" name="file" accept="image/*" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
-                </div>
-                <button type="submit" style="width:100%; background:#333; color:#fff; padding:15px; border:none; border-radius:10px; cursor:pointer; font-size:16px; font-weight:bold; transition:0.3s;">
-                    立即上傳並產生永久網址
-                </button>
-            </form>
-            
-            <div style="text-align:center; margin-top:40px; border-top:1px solid #eee; padding-top:20px;">
-                <a href="/" style="color:#888; text-decoration:none; font-size:0.9em; margin:0 15px;">回藝廊首頁</a>
-                <a href="/logout" style="color:#888; text-decoration:none; font-size:0.9em; margin:0 15px;">登出系統</a>
-            </div>
-        </div>
-    '''
+        paintings = conn.execute('SELECT * FROM paintings ORDER BY display_date DESC').fetchall()
+        site_info = {row['key']: row['value'] for row in conn.execute('SELECT * FROM site_info').fetchall()}
+        return render_template('admin.html', paintings=paintings, info=site_info)
 
 @app.route('/logout')
 def logout():
@@ -91,5 +100,4 @@ def logout():
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    # 這裡的 debug=True 僅供開發測試使用
     app.run()
