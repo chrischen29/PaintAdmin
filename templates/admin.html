@@ -2,14 +2,19 @@
 <html lang="zh-Hant-TW">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>全功能管理後台 | Helen Hu Art</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .preview-img { height: 60px; width: 60px; object-fit: cover; border-radius: 4px; }
+        .card-header { font-weight: bold; }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container py-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2>🎨 網站全功能管理</h2>
-            <a href="/logout" class="btn btn-outline-danger">登出</a>
+            <a href="/" class="btn btn-outline-secondary">回首頁</a>
         </div>
 
         <div class="card mb-4 shadow-sm">
@@ -18,11 +23,26 @@
                 <form method="POST">
                     <input type="hidden" name="action" value="update_info">
                     <div class="row g-3">
-                        <div class="col-md-4"><label>畫家名稱</label><input type="text" name="artist_name" class="form-control" value="{{ info.artist_name }}"></div>
-                        <div class="col-md-4"><label>銀行代號</label><input type="text" name="bank_code" class="form-control" value="{{ info.bank_code }}"></div>
-                        <div class="col-md-4"><label>戶名</label><input type="text" name="bank_user" class="form-control" value="{{ info.bank_user }}"></div>
-                        <div class="col-12"><label>銀行帳號</label><input type="text" name="bank_account" class="form-control" value="{{ info.bank_account }}"></div>
-                        <div class="col-12"><label>畫家簡介</label><textarea name="artist_intro" class="form-control" rows="3">{{ info.artist_intro }}</textarea></div>
+                        <div class="col-md-4">
+                            <label class="form-label">畫家名稱</label>
+                            <input type="text" name="artist_name" class="form-control" value="{{ info.artist_name }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">銀行代號</label>
+                            <input type="text" name="bank_code" class="form-control" value="{{ info.bank_code }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">戶名</label>
+                            <input type="text" name="bank_user" class="form-control" value="{{ info.bank_user }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">銀行帳號</label>
+                            <input type="text" name="bank_account" class="form-control" value="{{ info.bank_account }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">畫家簡介</label>
+                            <textarea name="artist_intro" class="form-control" rows="3">{{ info.artist_intro }}</textarea>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary mt-3">儲存基本資訊</button>
                 </form>
@@ -30,42 +50,88 @@
         </div>
 
         <div class="card mb-4 shadow-sm">
-            <div class="card-header bg-success text-white">新增畫作</div>
+            <div class="card-header bg-success text-white">新增畫作 (自動同步至 Google Sheets)</div>
             <div class="card-body">
                 <form method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="add_painting">
                     <div class="row g-3">
-                        <div class="col-md-6"><label>作品名稱</label><input type="text" name="name" class="form-control" required></div>
-                        <div class="col-md-3"><label>價格</label><input type="text" name="price" class="form-control"></div>
-                        <div class="col-md-3"><label>日期 (YYYY-MM-DD)</label><input type="date" name="display_date" class="form-control"></div>
-                        <div class="col-md-4"><label>尺寸</label><input type="text" name="size" class="form-control"></div>
-                        <div class="col-md-4"><label>媒材</label><input type="text" name="material" class="form-control"></div>
-                        <div class="col-md-4"><label>狀態</label><select name="finish" class="form-select"><option value="N">展示中</option><option value="Y">已蒙收藏</option></select></div>
-                        <div class="col-12"><label>詩意描述</label><textarea name="poetic_text" class="form-control"></textarea></div>
-                        <div class="col-12"><label>上傳圖片</label><input type="file" name="file" class="form-control" accept="image/*" required></div>
+                        <div class="col-md-6">
+                            <label class="form-label">作品名稱</label>
+                            <input type="text" name="name" class="form-control" placeholder="例如：藍色的夢" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">價格</label>
+                            <input type="text" name="price" class="form-control" placeholder="$4,200">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">展示日期</label>
+                            <input type="date" name="display_date" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">尺寸</label>
+                            <input type="text" name="size" class="form-control" placeholder="5P (35cm x 24cm)">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">媒材</label>
+                            <input type="text" name="material" class="form-control" placeholder="壓克力複合媒材">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">狀態</label>
+                            <select name="finish" class="form-select">
+                                <option value="n">展示中</option>
+                                <option value="y">已蒙收藏</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">詩意描述</label>
+                            <textarea name="poetic_text" class="form-control" rows="2" placeholder="輸入關於這幅畫的故事..."></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">上傳畫作圖片</label>
+                            <input type="file" name="file" class="form-control" accept="image/*" required>
+                            <div class="form-text text-muted">圖片將自動上傳至 ImgBB 並取得網址。</div>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-success mt-3">上傳並新增作品</button>
+                    <button type="submit" class="btn btn-success mt-3 w-100">確認上傳並新增作品</button>
                 </form>
             </div>
         </div>
 
         <div class="card shadow-sm">
-            <div class="card-header bg-secondary text-white">作品列表管理</div>
+            <div class="card-header bg-secondary text-white">現有作品列表</div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead><tr><th>圖片</th><th>名稱</th><th>操作</th></tr></thead>
+                    <thead class="table-light">
+                        <tr>
+                            <th width="100">預覽圖</th>
+                            <th>作品名稱</th>
+                            <th>ID (系統編號)</th>
+                            <th width="100">操作</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         {% for p in paintings %}
                         <tr>
-                            <td><img src="{{ p.image_url }}" style="height: 50px; width: 50px; object-fit: cover;"></td>
-                            <td>{{ p.name }}</td>
                             <td>
-                                <form method="POST" onsubmit="return confirm('確定要刪除嗎？')">
+                                {% if p.image_url %}
+                                <img src="{{ p.image_url }}" class="preview-img">
+                                {% else %}
+                                <div class="bg-secondary text-white text-center py-2" style="width:50px">無圖</div>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ p.name }}</strong></td>
+                            <td class="text-muted small">{{ p.id }}</td>
+                            <td>
+                                <form method="POST" onsubmit="return confirm('確定要刪除這幅畫嗎？此動作將同步從 Google Sheets 移除。')">
                                     <input type="hidden" name="action" value="delete_painting">
                                     <input type="hidden" name="id" value="{{ p.id }}">
-                                    <button class="btn btn-sm btn-danger">刪除</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">刪除</button>
                                 </form>
                             </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">目前尚無作品資料，請從上方新增。</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -73,5 +139,7 @@
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
