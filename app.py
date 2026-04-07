@@ -9,8 +9,8 @@ app.secret_key = 'helen_art_secret_key'
 
 # --- 1. 設定區 ---
 IMGBB_API_KEY = "bebac0016394472c839f571f730b34e1"
-# 填入你最新的 Google Apps Script 網址
-GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwWoqXFoMgdK-CLwMiWYW6NbnmAIkXk37YleYSDjcJRz9-TZgYqU-R_euToUKURJ2ikkw/exec"
+# 已更新為你提供的 paintadmin 副本 GAS 網址
+GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx-CX_AKQ_XbD3QUCBwZLG71hkU5HdcfpUolN9FmwRir0GUio3JBgPUPcBWJ2Vfd36pOw/exec"
 
 def get_artist_info():
     return {
@@ -60,7 +60,6 @@ def admin():
                     }
                     
                     # C. 發送 POST 請求給 GAS (不需金鑰)
-                    # 加入 timeout 與 allow_redirects 確保穩定
                     requests.post(GAS_WEB_APP_URL, json=payload, timeout=15)
                     return redirect(url_for('admin'))
                     
@@ -73,7 +72,6 @@ def admin():
         res = requests.get(GAS_WEB_APP_URL, timeout=15)
         
         if res.status_code == 200:
-            # 檢查是否為 JSON 格式
             rows = res.json()
             if isinstance(rows, list):
                 for r in rows:
@@ -83,7 +81,6 @@ def admin():
                             'name': r[1] if r[1] else '未命名',
                             'image_url': r[5]
                         })
-                # 讓最新的畫作顯示在最前面
                 paintings.reverse()
             else:
                 error_msg = "讀取失敗：回傳格式不正確，請確認 GAS 部署為『所有人』存取。"
@@ -93,6 +90,5 @@ def admin():
     return render_template('admin.html', paintings=paintings, info=get_artist_info(), error_msg=error_msg)
 
 if __name__ == '__main__':
-    # Render 環境適配
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
