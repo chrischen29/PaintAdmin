@@ -1,65 +1,117 @@
 import os
-import json
+import sqlite3
+import base64
 import time
-from flask import Flask
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
+import requests
+import json
+from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
+app.secret_key = 'helen_art_secret_key'
 
-# 試算表資訊
-SHEET_ID = "1EPiV8x-LYpPA0loGib2Se69tsdhvHLrZ_pvLZW65USo"
-RANGE_NAME = "工作表1!A:Q"
+# --- 基礎設定 ---
+IMGBB_API_KEY = "bebac0016394472c839f571f730b34e1"
+DB_FILE = "gallery.db"
 
-def get_sheets_service():
-    # 從 Render 環境變數讀取
-    creds_json = os.environ.get('GOOGLE_CREDS_JSON')
-    if not creds_json:
-        return None
+# --- 1. 資料庫初始化 ---
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    # 建立與 Google Sheets 對應的欄位 (A:Q)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS paintings (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            price TEXT,
+            size TEXT,
+            material TEXT,
+            image_url TEXT,
+            description TEXT,
+            poetic_text TEXT,
+            category TEXT,
+            tags TEXT,
+            location TEXT,
+            is_sold TEXT,
+            display_date TEXT,
+            finish_status TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def get_artist_info():
+    return {
+        "artist_name": "Helen Hu",
+        "bank_code": "822 (中國信託)",
+        "bank_user": "胡海倫",
+        "bank_account": "123-456789-000",
+        "artist_intro": "從事藝術創作多年，擅長壓克力複合媒材，捕捉生活中的寧靜與詩意。"
+    }
+
+# --- 2. 路由設定 ---
+
+@app.route('/')
+def index():
+    return redirect(url_for('admin'))
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    error_msg = None
     
-    try:
-        info = json.loads(creds_json)
-        # 關鍵：自動修正私鑰中的換行符號，防止 Signature 錯誤
-        if 'private_key' in info:
-            info['private_key'] = info['private_key'].replace('\\n', '\n')
-            
-        creds = service_account.Credentials.from_service_account_info(
-            info, scopes=['https://www.googleapis.com/auth/spreadsheets'])
-        return build('sheets', 'v4', credentials=creds)
-    except Exception as e:
-        print(f"解析錯誤: {e}")
-        return None
-
-@app.route('/test_add')
-def test_add():
-    service = get_sheets_service()
-    if not service:
-        return "失敗：找不到環境變數或 JSON 格式錯誤。"
-
-    try:
-        # 準備一筆測試資料
-        test_row = [
-            f"test_{int(time.time())}", # ID
-            "連線測試作品",              # 名稱
-            "0",                        # 價格
-            "測試規格",                  # 尺寸
-            "數位測試",                  # 媒材
-            "https://via.placeholder.com/150", # 假圖片路徑
-            "", "", "", "", "", "", 
-            "2026-04-07",               # 日期
-            "已完成"                     # 狀態
-        ]
+    if request.method == 'POST':
+        action = request.form.get('action')
         
-        service.spreadsheets().values().append(
-            spreadsheetId=SHEET_ID, 
-            range=RANGE_NAME,
-            valueInputOption="USER_ENTERED", 
-            body={'values': [test_row]}
-        ).execute()
-        
-        return "✅ 成功！請查看 Google Sheets，應該已經多了一列資料。"
-    except Exception as e:
-        return f"❌ 寫入失敗。錯誤訊息：{str(e)}"
+        # 新增畫作邏輯
+        if action == 'add_painting':
+            file = request.files.get('file')
+            if file:
+                try:
+                    # 上傳至 ImgBB
+                    img_base64 = base64.b64encode(file.read())
+                    res = requests.post("https://api.imgbb.com/1/upload", 
+                                        data={"key": IMGBB_API_KEY, "image": img_base64}).json()
+                    img_url = res['data']['url']
+
+                    # 寫入資料庫
+                    new_id = f"p{int(time.time())}"
+                    cursor.execute('''
+                        INSERT INTO paintings (id, name, price, size, material, image_url, poetic_text, display_date, finish_status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        new_id, 
+                        request.form.get('name'), 
+                        request.form.get('price'),
+                        request.form.get('size'), 
+                        request.form.get('material'), 
+                        img_url,
+                        request.form.get('poetic_text'),
+                        request.form.get('display_date'),
+                        request.form.get('finish')
+                    ))
+                    conn.commit()
+                    return redirect(url_for('admin'))
+                except Exception as e:
+                    error_msg = f"上傳失敗: {str(e)}"
+
+        # 刪除畫作邏輯
+        elif action == 'delete_painting':
+            target_id = request.form.get('id')
+            cursor.execute('DELETE FROM paintings WHERE id = ?', (target_id,))
+            conn.commit()
+            return redirect(url_for('admin'))
+
+    # 讀取畫作清單 (依時間排序)
+    cursor.execute('SELECT id, name, image_url FROM paintings ORDER BY id DESC')
+    rows = cursor.fetchall()
+    paintings = [{'id': r[0], 'name': r[1], 'image_url': r[2]} for r in rows]
+    
+    conn.close()
+    return render_template('admin.html', paintings=paintings, info=get_artist_info(), error_msg=error_msg)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    init_db()
+    # 確保在 Render 上能運行
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
