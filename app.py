@@ -5,12 +5,11 @@ import requests
 from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
-# 建議未來將此改為環境變數以提高安全性
+# 優先讀取環境變數中的 Secret Key，若無則使用預設值
 app.secret_key = os.environ.get('SECRET_KEY', 'helen_art_secret_key')
 
-# ImgBB API 配置
+# --- 設定區 ---
 IMGBB_API_KEY = "bebac0016394472c839f571f730b34e1"
-# Google Apps Script 佈署網址
 GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx-CX_AKQ_XbD3QUCBwZLG71hkU5HdcfpUolN9FmwRir0GUio3JBgPUPcBWJ2Vfd36pOw/exec"
 
 @app.route('/')
@@ -25,7 +24,7 @@ def admin():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        # --- 刪除功能 ---
+        # --- 刪除邏輯 ---
         if action == 'delete_painting':
             try:
                 requests.post(GAS_WEB_APP_URL, json={"action": "delete", "id": request.form.get('id')}, timeout=15)
@@ -33,31 +32,41 @@ def admin():
             except Exception as e:
                 error_msg = f"刪除失敗: {str(e)}"
 
-        # --- 新增或編輯功能 ---
+        # --- 新增或編輯邏輯 ---
         elif action in ['add_painting', 'edit_painting']:
             try:
-                # 1. 處理圖片：優先檢查是否有新上傳的檔案
+                # 初始圖片網址（若為編輯且沒傳新圖，則保留舊圖網址）
                 img_url = request.form.get('old_image_url', '')
                 file = request.files.get('file')
                 
+                # 判斷是否有新上傳的檔案
                 if file and file.filename != '':
-                    # 將檔案轉為 Base64 字串並解碼為 utf-8 格式，這是 API 要求的標準
+                    print(f"正在處理圖片上傳: {file.filename}")
+                    
+                    # 讀取並轉換為 Base64 字串 (修正關鍵：加上 .decode('utf-8'))
                     img_data = file.read()
                     img_base64 = base64.b64encode(img_data).decode('utf-8')
                     
-                    # 呼叫 ImgBB API
+                    # 傳送至 ImgBB
                     res = requests.post(
                         "https://api.imgbb.com/1/upload", 
                         data={"key": IMGBB_API_KEY, "image": img_base64},
                         timeout=30
                     ).json()
                     
+                    # --- 偵錯 Log：在後端確認 ImgBB 的回應 ---
+                    print("--- ImgBB API 回傳結果 ---")
+                    print(res) 
+                    
                     if res.get('success'):
                         img_url = res['data']['url']
+                        print(f"圖片上傳成功！網址: {img_url}")
                     else:
-                        raise Exception(f"ImgBB 錯誤: {res.get('error', {}).get('message', '上傳失敗')}")
+                        error_detail = res.get('error', {}).get('message', '未知錯誤')
+                        raise Exception(f"ImgBB 報錯: {error_detail}")
 
-                # 2. 準備傳送到 Google Sheets 的資料
+                # 組合要傳送給 Google Sheets 的 Payload
+                # 我們將 img_url 同時帶入 image_url 欄位與 other1 欄位
                 payload = {
                     "action": "add" if action == 'add_painting' else "update",
                     "id": request.form.get('id') if action == 'edit_painting' else f"painting{int(time.time())}",
@@ -65,7 +74,7 @@ def admin():
                     "price": request.form.get('price'),
                     "size": request.form.get('size'),
                     "material": request.form.get('material'),
-                    "image_url": img_url,
+                    "image_url": img_url,  # 更新主圖片欄位
                     "description_short": request.form.get('description_short'),
                     "poetic_text": request.form.get('poetic_text'),
                     "notices": request.form.get('notices'),
@@ -74,19 +83,19 @@ def admin():
                     "hand_painted_disclaimer": request.form.get('hand_painted_disclaimer'),
                     "display_date": request.form.get('display_date'),
                     "finish": request.form.get('finish'),
-                    "other1": request.form.get('other1', ''),
+                    "other1": img_url,      # 同步更新到 other1 欄位
                     "other2": request.form.get('other2', ''),
                     "other3": request.form.get('other3', '')
                 }
                 
-                # 3. 同步到資料庫 (Google Sheets)
-                response = requests.post(GAS_WEB_APP_URL, json=payload, timeout=25)
-                if response.status_code != 200:
-                    raise Exception("資料庫同步失敗，請檢查 GAS 權限")
-                    
+                print(f"正在同步資料到 Google Sheets... Action: {payload['action']}")
+                gas_res = requests.post(GAS_WEB_APP_URL, json=payload, timeout=25)
+                print(f"Google Sheets 回應狀態碼: {gas_res.status_code}")
+                
                 return redirect(url_for('admin'))
                 
             except Exception as e:
+                print(f"發生錯誤: {str(e)}")
                 error_msg = f"操作失敗: {str(e)}"
 
     # --- 讀取資料清單 ---
@@ -94,7 +103,6 @@ def admin():
         res = requests.get(GAS_WEB_APP_URL, timeout=15)
         if res.status_code == 200:
             rows = res.json()
-            # 確保欄位長度足夠，避免 IndexError
             for r in rows:
                 if len(r) >= 14:
                     paintings.append({
@@ -106,15 +114,14 @@ def admin():
                         'other2': r[15] if len(r)>15 else '', 
                         'other3': r[16] if len(r)>16 else ''
                     })
-            paintings.reverse() # 讓最新的作品排在上面
+            paintings.reverse()
         else:
-            error_msg = "資料庫讀取異常"
+            error_msg = "資料庫連線異常，請檢查 GAS 佈署"
     except Exception as e:
-        error_msg = f"無法連接到資料庫: {str(e)}"
+        error_msg = f"讀取失敗: {str(e)}"
 
     return render_template('admin.html', paintings=paintings, error_msg=error_msg)
 
 if __name__ == '__main__':
-    # 支援 Render 部署的 Port 設定
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
