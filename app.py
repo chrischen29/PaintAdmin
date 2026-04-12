@@ -30,7 +30,7 @@ def admin():
         # --- 新增或編輯 ---
         elif action in ['add_painting', 'edit_painting']:
             try:
-                # 處理圖片：如果有上傳新圖則呼叫 ImgBB，否則用舊網址
+                # 處理圖片：如果有上傳新圖則呼叫 ImgBB，否則用舊網址 
                 img_url = request.form.get('old_image_url', '')
                 file = request.files.get('file')
                 if file and file.filename != '':
