@@ -1,148 +1,64 @@
 import os
-import base64
-import time
-import requests
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, Response, send_from_directory
+from functools import wraps
 
-app = Flask(__name__)
-# 建議在 Render 的 Environment Variables 設定 SECRET_KEY，否則使用預設值
-app.secret_key = os.environ.get('SECRET_KEY', 'helen_art_secret_key')
+app = Flask(__name__, static_folder='static', template_folder='.')
 
-# --- 配置設定 ---
-IMGBB_API_KEY = "bebac0016394472c839f571f730b34e1"
-GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx-CX_AKQ_XbD3QUCBwZLG71hkU5HdcfpUolN9FmwRir0GUio3JBgPUPcBWJ2Vfd36pOw/exec"
+# ==========================================
+# 1. 安全設定：管理後台帳號密碼
+# ==========================================
+ADMIN_USER = "admin"
+ADMIN_PASSWORD = "你的密碼"  # <--- 請在此修改您的管理密碼
 
-# --- 路由 1：首頁 (展示頁面) ---
+def check_auth(username, password):
+    """檢查帳號密碼是否正確"""
+    return username == ADMIN_USER and password == ADMIN_PASSWORD
+
+def authenticate():
+    """傳送 401 回應，觸發瀏覽器跳出登入視窗"""
+    return Response(
+        '管理員認證失敗，請輸入正確的帳號密碼。', 401,
+        {'WWW-Authenticate': 'Basic realm="Login Required"'}
+    )
+
+def requires_auth(f):
+    """認證裝飾器"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
+# ==========================================
+# 2. 路由設定 (Routes)
+# ==========================================
+
+# 首頁：藝廊展示頁
 @app.route('/')
 def index():
-    paintings = []
-    try:
-        # 向 GAS 請求資料
-        res = requests.get(GAS_WEB_APP_URL, timeout=15)
-        if res.status_code == 200:
-            rows = res.json()
-            for r in rows:
-                # 確保基本欄位存在 (ID, Name, Price, Size, Material, ImageURL)
-                if len(r) >= 6:
-                    paintings.append({
-                        'name': r[1],
-                        'price': r[2],
-                        'size': r[3],
-                        'material': r[4],
-                        'image_url': r[5],
-                        'description_short': r[6] if len(r) > 6 else '',
-                        'poetic_text': r[7] if len(r) > 7 else ''
-                    })
-            # 讓最新上傳的作品排在最前面
-            paintings.reverse()
-    except Exception as e:
-        print(f"首頁資料讀取失敗: {str(e)}")
-    
-    return render_template('index.html', paintings=paintings)
+    # 確保您的 index.html 放在與 app.py 同層級或 templates 資料夾中
+    return render_template('index.html')
 
+# 管理後台：需要密碼認證
+@app.route('/admin')
+@requires_auth
+def admin_page():
+    # 確保您的 admin.html 檔案存在
+    return render_template('admin.html')
 
-# --- 路由 2：管理後台 (清單、新增、編輯、刪除) ---
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
-    error_msg = None
-    paintings = []
+# 解決 Favicon 找不到的問題
+@app.route('/favicon.ico')
+def favicon():
+    # 假設您的 favicon 放在 static/images/favicon.ico
+    return send_from_directory(os.path.join(app.root_path, 'static', 'images'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
-    if request.method == 'POST':
-        action = request.form.get('action')
-        
-        # --- A. 刪除邏輯 ---
-        if action == 'delete_painting':
-            try:
-                requests.post(GAS_WEB_APP_URL, json={"action": "delete", "id": request.form.get('id')}, timeout=15)
-                return redirect(url_for('admin'))
-            except Exception as e:
-                error_msg = f"刪除失敗: {str(e)}"
-
-        # --- B. 新增或編輯邏輯 ---
-        elif action in ['add_painting', 'edit_painting']:
-            try:
-                # 處理圖片：保留舊圖或上傳新圖
-                img_url = request.form.get('old_image_url', '')
-                file = request.files.get('file')
-                
-                if file and file.filename != '':
-                    print(f"偵測到新檔案上傳: {file.filename}")
-                    img_data = file.read()
-                    img_base64 = base64.b64encode(img_data).decode('utf-8')
-                    
-                    # 呼叫 ImgBB API
-                    res = requests.post(
-                        "https://api.imgbb.com/1/upload", 
-                        data={"key": IMGBB_API_KEY, "image": img_base64},
-                        timeout=30
-                    ).json()
-                    
-                    if res.get('success'):
-                        img_url = res['data']['url']
-                        print(f"ImgBB 上傳成功: {img_url}")
-                    else:
-                        error_detail = res.get('error', {}).get('message', '上傳失敗')
-                        raise Exception(f"ImgBB 服務錯誤: {error_detail}")
-
-                # 準備傳送給 GAS 的資料包 (Payload)
-                payload = {
-                    "action": "add" if action == 'add_painting' else "update",
-                    "id": request.form.get('id') if action == 'edit_painting' else f"painting{int(time.time())}",
-                    "name": request.form.get('name'),
-                    "price": request.form.get('price'),
-                    "size": request.form.get('size'),
-                    "material": request.form.get('material'),
-                    "image_url": img_url,
-                    "description_short": request.form.get('description_short'),
-                    "poetic_text": request.form.get('poetic_text'),
-                    "notices": request.form.get('notices'),
-                    "lead_time": request.form.get('lead_time'),
-                    "frame_time": request.form.get('frame_time'),
-                    "hand_painted_disclaimer": request.form.get('hand_painted_disclaimer'),
-                    "display_date": request.form.get('display_date'),
-                    "finish": request.form.get('finish'),
-                    "other1": img_url,  # 同步備份網址到 other1 欄位
-                    "other2": request.form.get('other2', ''),
-                    "other3": request.form.get('other3', '')
-                }
-                
-                print(f"正在同步至 Google Sheets (Action: {payload['action']})...")
-                gas_res = requests.post(GAS_WEB_APP_URL, json=payload, timeout=25)
-                
-                if gas_res.status_code == 200:
-                    return redirect(url_for('admin'))
-                else:
-                    raise Exception(f"GAS 回應錯誤碼: {gas_res.status_code}")
-                
-            except Exception as e:
-                print(f"後台操作異常: {str(e)}")
-                error_msg = f"操作失敗: {str(e)}"
-
-    # --- C. 獲取管理清單資料 ---
-    try:
-        res = requests.get(GAS_WEB_APP_URL, timeout=15)
-        if res.status_code == 200:
-            rows = res.json()
-            for r in rows:
-                if len(r) >= 14:
-                    paintings.append({
-                        'id': r[0], 'name': r[1], 'price': r[2], 'size': r[3], 'material': r[4],
-                        'image_url': r[5], 'description_short': r[6], 'poetic_text': r[7],
-                        'notices': r[8], 'lead_time': r[9], 'frame_time': r[10],
-                        'hand_painted_disclaimer': r[11], 'display_date': r[12], 'finish': r[13],
-                        'other1': r[14] if len(r)>14 else '', 
-                        'other2': r[15] if len(r)>15 else '', 
-                        'other3': r[16] if len(r)>16 else ''
-                    })
-            paintings.reverse()
-        else:
-            error_msg = "無法讀取資料庫，請檢查 GAS 部署權限"
-    except Exception as e:
-        error_msg = f"系統連線錯誤: {str(e)}"
-
-    return render_template('admin.html', paintings=paintings, error_msg=error_msg)
-
+# ==========================================
+# 3. 啟動程式
+# ==========================================
 if __name__ == '__main__':
-    # 支援 Render 自動分配的 Port
+    # 在 Render 部署時，通常會由 gunicorn 啟動，此處為本地測試用
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)
