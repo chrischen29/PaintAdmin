@@ -6,7 +6,6 @@ from flask import Flask, render_template, request, Response, redirect, url_for, 
 from functools import wraps
 
 app = Flask(__name__)
-# 建議在 Render 的 Environment Variables 設定 SECRET_KEY
 app.secret_key = os.environ.get('SECRET_KEY', 'helen_art_secret_key')
 
 # --- 配置設定 ---
@@ -23,7 +22,6 @@ def check_auth(username, password):
     return username == ADMIN_USER and password == ADMIN_PASSWORD
 
 def authenticate():
-    """要求瀏覽器彈出 Basic Auth 登入框"""
     return Response(
         '管理員認證失敗，請輸入正確的帳號密碼。', 401,
         {'WWW-Authenticate': 'Basic realm="Login Required"'}
@@ -42,37 +40,38 @@ def requires_auth(f):
 # 2. 路由設定
 # ==========================================
 
-# --- 登出功能 (加強跳轉版) ---
+# --- 登出功能 (強效洗掉快取版) ---
 @app.route('/logout')
 def logout():
     """
-    透過 401 狀態碼清除認證，並利用 Meta Refresh 確保點擊取消後自動跳轉回 admin。
+    使用 Ajax 送出錯誤的認證資訊，強迫瀏覽器覆蓋掉原本正確的 admin:123
     """
-    logout_html = '''
+    return '''
     <html>
-        <head>
-            <meta http-equiv="refresh" content="0; url=/admin">
-            <title>正在登出...</title>
-        </head>
-        <body>
-            <p>正在登出並導向登入畫面...</p>
-            <script>window.location.href="/admin";</script>
+        <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+            <h3>正在安全登出...</h3>
+            <script>
+                // 1. 建立一個指向 admin 的請求，但帶入錯誤的帳密 (logout:logout)
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", "/admin", true, "logout", "logout"); 
+                xhr.send();
+                
+                // 2. 等待請求發出後，強制刷新並跳轉回 admin
+                setTimeout(function(){
+                    window.location.href = "/admin";
+                }, 500);
+            </script>
         </body>
     </html>
     '''
-    return Response(
-        logout_html,
-        401,
-        {'WWW-Authenticate': 'Basic realm="Logout"'}
-    )
 
-# --- 修正 Favicon 顯示 ---
+# --- 修正 Favicon ---
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path),
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
-# --- 首頁 (展示頁面) ---
+# --- 首頁 ---
 @app.route('/')
 def index():
     paintings = []
@@ -102,7 +101,6 @@ def admin():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        # --- A. 刪除邏輯 ---
         if action == 'delete_painting':
             try:
                 requests.post(GAS_WEB_APP_URL, json={"action": "delete", "id": request.form.get('id')}, timeout=15)
@@ -110,12 +108,10 @@ def admin():
             except Exception as e:
                 error_msg = f"刪除失敗: {str(e)}"
 
-        # --- B. 新增或編輯邏輯 ---
         elif action in ['add_painting', 'edit_painting']:
             try:
                 img_url = request.form.get('old_image_url', '')
                 file = request.files.get('file')
-                
                 if file and file.filename != '':
                     img_data = file.read()
                     img_base64 = base64.b64encode(img_data).decode('utf-8')
@@ -124,7 +120,6 @@ def admin():
                         data={"key": IMGBB_API_KEY, "image": img_base64},
                         timeout=30
                     ).json()
-                    
                     if res.get('success'):
                         img_url = res['data']['url']
                     else:
@@ -154,11 +149,9 @@ def admin():
                 gas_res = requests.post(GAS_WEB_APP_URL, json=payload, timeout=25)
                 if gas_res.status_code == 200:
                     return redirect(url_for('admin'))
-                
             except Exception as e:
                 error_msg = f"操作失敗: {str(e)}"
 
-    # --- C. 獲取管理清單資料 ---
     try:
         res = requests.get(GAS_WEB_APP_URL, timeout=15)
         if res.status_code == 200:
