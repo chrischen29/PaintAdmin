@@ -2,27 +2,25 @@ import os
 from flask import Flask, render_template, request, Response, send_from_directory
 from functools import wraps
 
-app = Flask(__name__, static_folder='static', template_folder='.')
+# 因為你的檔案在 templates 資料夾，這裡維持預設即可
+app = Flask(__name__)
 
 # ==========================================
-# 1. 安全設定：管理後台帳號密碼
+# 1. 帳號密碼設定 (依照你的需求設定為 123)
 # ==========================================
 ADMIN_USER = "admin"
-ADMIN_PASSWORD = "123"  # <--- 請在此修改您的管理密碼
+ADMIN_PASSWORD = "123" 
 
 def check_auth(username, password):
-    """檢查帳號密碼是否正確"""
     return username == ADMIN_USER and password == ADMIN_PASSWORD
 
 def authenticate():
-    """傳送 401 回應，觸發瀏覽器跳出登入視窗"""
     return Response(
         '管理員認證失敗，請輸入正確的帳號密碼。', 401,
         {'WWW-Authenticate': 'Basic realm="Login Required"'}
     )
 
 def requires_auth(f):
-    """認證裝飾器"""
     @wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
@@ -32,33 +30,35 @@ def requires_auth(f):
     return decorated
 
 # ==========================================
-# 2. 路由設定 (Routes)
+# 2. 路由設定
 # ==========================================
 
-# 首頁：藝廊展示頁
+# 首頁 (藝廊展示)
 @app.route('/')
 def index():
-    # 確保您的 index.html 放在與 app.py 同層級或 templates 資料夾中
+    # Flask 會自動去 templates/ 找 index.html
     return render_template('index.html')
 
-# 管理後台：需要密碼認證
+# 管理後台 (密碼保護)
 @app.route('/admin')
 @requires_auth
 def admin_page():
-    # 確保您的 admin.html 檔案存在
-    return render_template('admin.html')
+    # 這裡假設你的後台邏輯需要傳入 paintings 資料
+    # 如果你目前只是純轉發頁面，可以先這樣寫：
+    paintings = [] # 這裡應串接你讀取 CSV 的邏輯，或先給空陣列避免報錯
+    return render_template('admin.html', paintings=paintings)
 
-# 解決 Favicon 找不到的問題
+# 強制修復 Favicon 顯示問題
 @app.route('/favicon.ico')
 def favicon():
-    # 假設您的 favicon 放在 static/images/favicon.ico
-    return send_from_directory(os.path.join(app.root_path, 'static', 'images'),
+    # 從你的 GitHub 截圖看，favicon.ico 放在根目錄
+    return send_from_directory(app.root_path,
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 # ==========================================
-# 3. 啟動程式
+# 3. 啟動 (Render 專用)
 # ==========================================
 if __name__ == '__main__':
-    # 在 Render 部署時，通常會由 gunicorn 啟動，此處為本地測試用
+    # Render 會透過環境變數指定 PORT
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port)
