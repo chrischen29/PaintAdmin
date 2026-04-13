@@ -5,17 +5,43 @@ import requests
 from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
-# 優先讀取環境變數中的 Secret Key，若無則使用預設值
+# 建議在 Render 的 Environment Variables 設定 SECRET_KEY，否則使用預設值
 app.secret_key = os.environ.get('SECRET_KEY', 'helen_art_secret_key')
 
-# --- 設定區 ---
+# --- 配置設定 ---
 IMGBB_API_KEY = "bebac0016394472c839f571f730b34e1"
 GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx-CX_AKQ_XbD3QUCBwZLG71hkU5HdcfpUolN9FmwRir0GUio3JBgPUPcBWJ2Vfd36pOw/exec"
 
+# --- 路由 1：首頁 (展示頁面) ---
 @app.route('/')
 def index():
-    return redirect(url_for('admin'))
+    paintings = []
+    try:
+        # 向 GAS 請求資料
+        res = requests.get(GAS_WEB_APP_URL, timeout=15)
+        if res.status_code == 200:
+            rows = res.json()
+            for r in rows:
+                # 確保基本欄位存在 (ID, Name, Price, Size, Material, ImageURL)
+                if len(r) >= 6:
+                    paintings.append({
+                        'name': r[1],
+                        'price': r[2],
+                        'size': r[3],
+                        'material': r[4],
+                        'image_url': r[5],
+                        'description_short': r[6] if len(r) > 6 else '',
+                        'poetic_text': r[7] if len(r) > 7 else ''
+                    })
+            # 讓最新上傳的作品排在最前面
+            paintings.reverse()
+    except Exception as e:
+        print(f"首頁資料讀取失敗: {str(e)}")
+    
+    return render_template('index.html', paintings=paintings)
 
+
+# --- 路由 2：管理後台 (清單、新增、編輯、刪除) ---
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     error_msg = None
@@ -24,7 +50,7 @@ def admin():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        # --- 刪除邏輯 ---
+        # --- A. 刪除邏輯 ---
         if action == 'delete_painting':
             try:
                 requests.post(GAS_WEB_APP_URL, json={"action": "delete", "id": request.form.get('id')}, timeout=15)
@@ -32,41 +58,33 @@ def admin():
             except Exception as e:
                 error_msg = f"刪除失敗: {str(e)}"
 
-        # --- 新增或編輯邏輯 ---
+        # --- B. 新增或編輯邏輯 ---
         elif action in ['add_painting', 'edit_painting']:
             try:
-                # 初始圖片網址（若為編輯且沒傳新圖，則保留舊圖網址）
+                # 處理圖片：保留舊圖或上傳新圖
                 img_url = request.form.get('old_image_url', '')
                 file = request.files.get('file')
                 
-                # 判斷是否有新上傳的檔案
                 if file and file.filename != '':
-                    print(f"正在處理圖片上傳: {file.filename}")
-                    
-                    # 讀取並轉換為 Base64 字串 (修正關鍵：加上 .decode('utf-8'))
+                    print(f"偵測到新檔案上傳: {file.filename}")
                     img_data = file.read()
                     img_base64 = base64.b64encode(img_data).decode('utf-8')
                     
-                    # 傳送至 ImgBB
+                    # 呼叫 ImgBB API
                     res = requests.post(
                         "https://api.imgbb.com/1/upload", 
                         data={"key": IMGBB_API_KEY, "image": img_base64},
                         timeout=30
                     ).json()
                     
-                    # --- 偵錯 Log：在後端確認 ImgBB 的回應 ---
-                    print("--- ImgBB API 回傳結果 ---")
-                    print(res) 
-                    
                     if res.get('success'):
                         img_url = res['data']['url']
-                        print(f"圖片上傳成功！網址: {img_url}")
+                        print(f"ImgBB 上傳成功: {img_url}")
                     else:
-                        error_detail = res.get('error', {}).get('message', '未知錯誤')
-                        raise Exception(f"ImgBB 報錯: {error_detail}")
+                        error_detail = res.get('error', {}).get('message', '上傳失敗')
+                        raise Exception(f"ImgBB 服務錯誤: {error_detail}")
 
-                # 組合要傳送給 Google Sheets 的 Payload
-                # 我們將 img_url 同時帶入 image_url 欄位與 other1 欄位
+                # 準備傳送給 GAS 的資料包 (Payload)
                 payload = {
                     "action": "add" if action == 'add_painting' else "update",
                     "id": request.form.get('id') if action == 'edit_painting' else f"painting{int(time.time())}",
@@ -74,7 +92,7 @@ def admin():
                     "price": request.form.get('price'),
                     "size": request.form.get('size'),
                     "material": request.form.get('material'),
-                    "image_url": img_url,  # 更新主圖片欄位
+                    "image_url": img_url,
                     "description_short": request.form.get('description_short'),
                     "poetic_text": request.form.get('poetic_text'),
                     "notices": request.form.get('notices'),
@@ -83,22 +101,24 @@ def admin():
                     "hand_painted_disclaimer": request.form.get('hand_painted_disclaimer'),
                     "display_date": request.form.get('display_date'),
                     "finish": request.form.get('finish'),
-                    "other1": img_url,      # 同步更新到 other1 欄位
+                    "other1": img_url,  # 同步備份網址到 other1 欄位
                     "other2": request.form.get('other2', ''),
                     "other3": request.form.get('other3', '')
                 }
                 
-                print(f"正在同步資料到 Google Sheets... Action: {payload['action']}")
+                print(f"正在同步至 Google Sheets (Action: {payload['action']})...")
                 gas_res = requests.post(GAS_WEB_APP_URL, json=payload, timeout=25)
-                print(f"Google Sheets 回應狀態碼: {gas_res.status_code}")
                 
-                return redirect(url_for('admin'))
+                if gas_res.status_code == 200:
+                    return redirect(url_for('admin'))
+                else:
+                    raise Exception(f"GAS 回應錯誤碼: {gas_res.status_code}")
                 
             except Exception as e:
-                print(f"發生錯誤: {str(e)}")
+                print(f"後台操作異常: {str(e)}")
                 error_msg = f"操作失敗: {str(e)}"
 
-    # --- 讀取資料清單 ---
+    # --- C. 獲取管理清單資料 ---
     try:
         res = requests.get(GAS_WEB_APP_URL, timeout=15)
         if res.status_code == 200:
@@ -116,12 +136,13 @@ def admin():
                     })
             paintings.reverse()
         else:
-            error_msg = "資料庫連線異常，請檢查 GAS 佈署"
+            error_msg = "無法讀取資料庫，請檢查 GAS 部署權限"
     except Exception as e:
-        error_msg = f"讀取失敗: {str(e)}"
+        error_msg = f"系統連線錯誤: {str(e)}"
 
     return render_template('admin.html', paintings=paintings, error_msg=error_msg)
 
 if __name__ == '__main__':
+    # 支援 Render 自動分配的 Port
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
