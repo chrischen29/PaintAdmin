@@ -8,7 +8,7 @@ app = Flask(__name__, static_folder='static', template_folder='.')
 # 1. 安全設定：管理後台帳號密碼
 # ==========================================
 ADMIN_USER = "admin"
-ADMIN_PASSWORD = "你的密碼"  # <--- 請在此修改您的管理密碼
+ADMIN_PASSWORD = "123"  # <--- 請在此修改您的管理密碼
 
 def check_auth(username, password):
     """檢查帳號密碼是否正確"""
