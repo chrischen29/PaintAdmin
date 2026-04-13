@@ -2,10 +2,11 @@ import os
 import base64
 import time
 import requests
-from flask import Flask, render_template, request, Response, redirect, url_for
+from flask import Flask, render_template, request, Response, redirect, url_for, send_from_directory
 from functools import wraps
 
 app = Flask(__name__)
+# 建議在 Render 的 Environment Variables 設定 SECRET_KEY
 app.secret_key = os.environ.get('SECRET_KEY', 'helen_art_secret_key')
 
 # --- 配置設定 ---
@@ -22,6 +23,7 @@ def check_auth(username, password):
     return username == ADMIN_USER and password == ADMIN_PASSWORD
 
 def authenticate():
+    """要求瀏覽器彈出 Basic Auth 登入框"""
     return Response(
         '管理員認證失敗，請輸入正確的帳號密碼。', 401,
         {'WWW-Authenticate': 'Basic realm="Login Required"'}
@@ -40,33 +42,37 @@ def requires_auth(f):
 # 2. 路由設定
 # ==========================================
 
-# --- 登出功能 (優化版) ---
+# --- 登出功能 (加強跳轉版) ---
 @app.route('/logout')
 def logout():
     """
-    強迫瀏覽器清除 Basic Auth 的方式：
-    將頁面導向一個包含『錯誤帳密格式』的 URL，再跳轉回 admin。
+    透過 401 狀態碼清除認證，並利用 Meta Refresh 確保點擊取消後自動跳轉回 admin。
     """
-    # 這裡導向到一個故意包含 'logout@' 的 URL，有些瀏覽器會因此覆蓋快取
-    # 隨後再透過 JavaScript 或 Redirect 重新進入 /admin 就會再次跳出登入框
-    return f"""
-    <script>
-        // 這種寫法會讓瀏覽器嘗試用 "invalid" 這個錯誤帳號去訪問後台，進而洗掉正確的快取
-        var url = window.location.origin.replace('://', '://invalid:invalid@');
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "/admin", true);
-        xhr.setRequestHeader("Authorization", "Basic " + btoa("invalid:invalid"));
-        xhr.onreadystatechange = function() {{
-            if (xhr.status == 401) {{
-                window.location.href = "/admin"; // 成功誘發 401 後，跳轉回正常的 admin 頁面
-            }}
-        }};
-        xhr.send();
-    </script>
-    <p>正在安全登出...</p>
-    """
+    logout_html = '''
+    <html>
+        <head>
+            <meta http-equiv="refresh" content="0; url=/admin">
+            <title>正在登出...</title>
+        </head>
+        <body>
+            <p>正在登出並導向登入畫面...</p>
+            <script>window.location.href="/admin";</script>
+        </body>
+    </html>
+    '''
+    return Response(
+        logout_html,
+        401,
+        {'WWW-Authenticate': 'Basic realm="Logout"'}
+    )
 
-# --- 首頁 ---
+# --- 修正 Favicon 顯示 ---
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+# --- 首頁 (展示頁面) ---
 @app.route('/')
 def index():
     paintings = []
