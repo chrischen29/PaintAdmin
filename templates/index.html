@@ -130,7 +130,7 @@
                     </div>
                     <div class="col-md-7">
                         <h2 class="mb-3">胡敏慧</h2>
-                        <p>願我的畫可以帶給您內心的寧靜，溫暖的療癒，充沛的力量。</p>
+                        <p>願我的畫可以帶給您內心的寧靜，溫緩的療癒，充沛的力量。</p>
                         <p>讓我在您心裡種下一顆種子，並都能擁抱它茁長後的愉悅芳華💝</p>
 
                         <div class="mt-4">
@@ -199,18 +199,23 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const sheetId = '1EPiV8x-LYpPA0loGib2Se69tsdhvHLrZ_pvLZW65USo';
-            const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+            // 已更新為新的 Google Sheet ID
+            const sheetId = '1M0N_ERVR_Nw8t9fgeDhDUxjji5NwsNoFvaE6MbY2t6M';
+            const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
 
             const portfolioContainer = document.getElementById('portfolio-container');
             const modalContainer = document.getElementById('modal-container');
 
-            // 輔助函式：處理圖片網址指向新網域
+            // 輔助函式：處理圖片網址
             function getFullImageUrl(rawUrl) {
                 if (!rawUrl) return '';
                 const url = rawUrl.trim();
+                
+                // 如果是完整的 http 開頭，直接回傳
                 if (url.startsWith('http')) return url;
-                // 去除可能帶有的路徑前綴，只留檔名，並補上 paintadmin 網址
+                
+                // 針對 paintadmin.onrender.com 的路徑優化
+                // 去除可能帶有的重複路徑前綴，確保合併成正確的 URL
                 const fileName = url.replace(/^(\/?static\/images\/|\/?images\/|\/)/, '');
                 return `https://paintadmin.onrender.com/static/images/${fileName}`;
             }
@@ -230,7 +235,9 @@
                 header: true,
                 complete: function (results) {
                     let paintings = results.data || [];
+                    // 過濾掉空行
                     paintings = paintings.filter(item => item.name && item.name.trim() !== '');
+                    // 按日期排序
                     paintings.sort((a, b) => parseDisplayDate(b.display_date) - parseDisplayDate(a.display_date));
 
                     let cardsHtml = '';
