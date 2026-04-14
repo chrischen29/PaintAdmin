@@ -1,247 +1,216 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helen Hu Art - 後台管理</title>
-    
-    <link rel="icon" href="https://paintadmin.onrender.com/static/images/favicon.ico" type="image/x-icon">
-    
+    <title>Helen Hu ARTLIST 管理後台</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary-color: #6c5ce7; }
-        body { background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
-        .navbar { background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%); color: white; margin-bottom: 2rem; }
-        .thumb { width: 70px; height: 70px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .card { border: none; border-radius: 15px; }
-        .form-label { font-weight: 600; color: #444; font-size: 0.85rem; margin-bottom: 4px; }
-        .modal-content { border-radius: 20px; border: none; }
-        .preview-container { text-align: center; background: #eee; border-radius: 10px; padding: 10px; min-height: 150px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .preview-img { max-width: 100%; max-height: 200px; display: none; border-radius: 5px; }
+        :root { --primary-color: #6366f1; }
+        body { background-color: #f8fafc; font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
+        .navbar { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; }
+        .card { border: none; border-radius: 12px; transition: transform 0.2s; }
+        .table img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; }
         .btn-primary { background-color: var(--primary-color); border: none; }
-        .btn-primary:hover { background-color: #5849c4; }
-        .table thead { background-color: #f1f0ff; }
+        .btn-primary:hover { background-color: #4338ca; }
     </style>
 </head>
 <body>
 
-<nav class="navbar shadow-sm">
+<nav class="navbar navbar-dark shadow-sm">
     <div class="container d-flex justify-content-between py-2">
-        <span class="navbar-brand mb-0 h1 text-white">🎨 Helen Hu ARTLIST 管理系統</span>
+        <span class="navbar-brand mb-0 h1">🎨 Helen Hu ARTLIST 管理系統</span>
         <div>
             <a href="/" class="btn btn-outline-light btn-sm me-2">查看前台</a>
-            <a href="/logout" class="btn btn-danger btn-sm me-2" onclick="return confirm('確定要登出並離開系統嗎？')">登出</a>
-            <button class="btn btn-light btn-sm fw-bold" onclick="openAddModal()">＋ 新增作品資料</button>
+            <a href="/logout" class="btn btn-danger btn-sm me-2" onclick="return confirm('確定要登出嗎？')">登出</a>
+            <button class="btn btn-light btn-sm fw-bold" onclick="openAddModal()">＋ 新增作品</button>
         </div>
     </div>
 </nav>
 
-<div class="container mb-5">
+<div class="container my-5">
     {% if error_msg %}
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-        <strong>提示：</strong> {{ error_msg }}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>{{ error_msg }}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     {% endif %}
 
-    <div class="card shadow-sm p-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="fw-bold mb-0">目前作品清單</h5>
-            <small class="text-muted">共 {{ paintings|length }} 件作品</small>
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 text-secondary"><i class="fas fa-list me-2"></i>作品資料清單</h5>
         </div>
-        
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th width="100">預覽</th>
-                        <th>作品名稱</th>
-                        <th>規格 & 媒材</th>
-                        <th>狀態</th>
-                        <th width="150">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in paintings %}
-                    <tr>
-                        <td>
-                            <a href="{{ p.image_url }}" target="_blank">
-                                <img src="{{ p.image_url }}" class="thumb" onerror="this.src='https://placehold.co/100x100?text=No+Image'">
-                            </a>
-                        </td>
-                        <td>
-                            <div class="fw-bold">{{ p.name }}</div>
-                            <div class="text-muted" style="font-size: 0.75rem;">ID: {{ p.id }}</div>
-                        </td>
-                        <td>
-                            <div class="small text-secondary"><i class="fa-solid fa-ruler-combined me-1"></i>{{ p.size or '未標註' }}</div>
-                            <div class="small text-secondary"><i class="fa-solid fa-palette me-1"></i>{{ p.material or '未標註' }}</div>
-                        </td>
-                        <td>
-                            {% if p.finish == 'y' %}
-                            <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>已完成</span>
-                            {% else %}
-                            <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i>製作中</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary me-1" onclick='openEditModal({{ p|tojson }})'>
-                                <i class="fa-solid fa-pen-to-square"></i> 編輯
-                            </button>
-                            <form action="/admin" method="POST" class="d-inline">
-                                <input type="hidden" name="action" value="delete_painting">
-                                <input type="hidden" name="id" value="{{ p.id }}">
-                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('確定要永久刪除這件作品嗎？')">
-                                    <i class="fa-solid fa-trash"></i>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">預覽</th>
+                            <th>作品名稱</th>
+                            <th>價格</th>
+                            <th>狀態</th>
+                            <th>尺寸</th>
+                            <th class="text-end pe-4">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in paintings %}
+                        <tr>
+                            <td class="ps-4"><img src="{{ p.image_url }}" alt="thumb"></td>
+                            <td class="fw-bold">{{ p.name }}</td>
+                            <td>{{ p.price }}</td>
+                            <td>
+                                <span class="badge {% if p.finish == '已完成' %}bg-success{% elif p.finish == '預訂中' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                    {{ p.finish }}
+                                </span>
+                            </td>
+                            <td class="text-muted small">{{ p.size }}</td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-outline-primary btn-sm me-1" onclick='openEditModal({{ p | tojson }})'>
+                                    <i class="fas fa-edit"></i> 編輯
                                 </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">目前暫無作品資料，請點擊上方新增。</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                                <form method="POST" style="display:inline;" onsubmit="return confirm('確定要刪除這件作品嗎？');">
+                                    <input type="hidden" name="action" value="delete_painting">
+                                    <input type="hidden" name="id" value="{{ p.id }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="fas fa-trash"></i> 刪除
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="workModal" data-bs-backdrop="static" tabindex="-1">
+<div class="modal fade" id="paintingModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <form action="/admin" method="POST" enctype="multipart/form-data" class="modal-content">
-            <div class="modal-header border-0 bg-light">
-                <h5 class="modal-title fw-bold" id="modalTitle">編輯作品</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body px-4">
-                <input type="hidden" name="action" id="formAction">
-                <input type="hidden" name="id" id="field_id">
-                <input type="hidden" name="old_image_url" id="field_old_img">
-
-                <div class="row g-3">
-                    <div class="col-md-8">
-                        <div class="row g-2">
-                            <div class="col-md-8">
-                                <label class="form-label">作品名稱 *</label>
-                                <input type="text" name="name" id="field_name" class="form-control" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">價格</label>
-                                <input type="text" name="price" id="field_price" class="form-control" placeholder="NTD">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">尺寸規格</label>
-                                <input type="text" name="size" id="field_size" class="form-control" placeholder="40x40cm">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">使用媒材</label>
-                                <input type="text" name="material" id="field_material" class="form-control" placeholder="油畫">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">完成/展示日期</label>
-                                <input type="text" name="display_date" id="field_date" class="form-control" placeholder="2024.04">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">狀態</label>
-                                <select name="finish" id="field_finish" class="form-select">
-                                    <option value="y">y (已完成)</option>
-                                    <option value="n">n (製作中)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">製作天數</label>
-                                <input type="text" name="lead_time" id="field_lead" class="form-control">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">裱框天數</label>
-                                <input type="text" name="frame_time" id="field_frame" class="form-control">
-                            </div>
+        <div class="modal-content border-0 shadow">
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" id="modal_action" value="add_painting">
+                <input type="hidden" name="id" id="painting_id">
+                <input type="hidden" name="old_image_url" id="old_image_url">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal_title">📝 新增作品資料</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">作品名稱 *</label>
+                            <input type="text" name="name" id="p_name" class="form-control" required>
                         </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label">作品圖片</label>
-                        <div class="preview-container mb-2">
-                            <img id="imagePreview" src="" class="preview-img">
-                            <span id="previewText" class="text-muted small">尚未選取圖片</span>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">價格</label>
+                            <input type="text" name="price" id="p_price" class="form-control">
                         </div>
-                        <input type="file" name="file" id="fileInput" class="form-control form-control-sm" accept="image/*">
-                        <div class="form-text" style="font-size: 0.7rem;">上傳將自動存入伺服器</div>
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label">作品故事 / 描述</label>
-                        <textarea name="poetic_text" id="field_poetic" class="form-control" rows="4"></textarea>
+                        <div class="col-md-4">
+                            <label class="form-label">尺寸規格</label>
+                            <input type="text" name="size" id="p_size" class="form-control" placeholder="41cm*31.5cm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">使用媒材</label>
+                            <input type="text" name="material" id="p_material" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">完成/展示日期</label>
+                            <input type="text" name="display_date" id="p_display_date" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-primary">狀態</label>
+                            <select name="finish" id="p_finish" class="form-select">
+                                <option value="已完成">已完成</option>
+                                <option value="預訂中">預訂中</option>
+                                <option value="已售出">已售出</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">製作天數</label>
+                            <input type="text" name="lead_time" id="p_lead_time" class="form-control" placeholder="20工作天">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">裱框天數</label>
+                            <input type="text" name="frame_time" id="p_frame_time" class="form-control" placeholder="3-5工作天">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">作品故事 / 描述</label>
+                            <textarea name="description_short" id="p_description_short" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">詩文內容</label>
+                            <textarea name="poetic_text" id="p_poetic_text" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">注意事項</label>
+                            <input type="text" name="notices" id="p_notices" class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-danger">手繪免責聲明</label>
+                            <input type="text" name="hand_painted_disclaimer" id="p_hand_painted_disclaimer" class="form-control">
+                        </div>
+                        <div class="col-12 border-top pt-3">
+                            <label class="form-label fw-bold">作品圖片</label>
+                            <input type="file" name="file" class="form-control" accept="image/*">
+                            <div class="form-text mt-1 text-muted">若為編輯且不更換圖片，請留空。</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
-                <button type="submit" class="btn btn-primary px-5">儲存並更新資料庫</button>
-            </div>
-        </form>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary px-4">儲存並更新資料庫</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-    const workModal = new bootstrap.Modal(document.getElementById('workModal'));
-    const imagePreview = document.getElementById('imagePreview');
-    const previewText = document.getElementById('previewText');
-    const fileInput = document.getElementById('fileInput');
+    const modal = new bootstrap.Modal(document.getElementById('paintingModal'));
 
-    fileInput.onchange = evt => {
-        const [file] = fileInput.files;
-        if (file) {
-            imagePreview.src = URL.createObjectURL(file);
-            imagePreview.style.display = 'block';
-            previewText.style.display = 'none';
-        }
-    }
-
+    // 開啟「新增」視窗
     function openAddModal() {
-        document.getElementById('modalTitle').innerText = "✨ 新增全新作品";
-        document.getElementById('formAction').value = "add_painting";
-        document.getElementById('field_id').value = "";
-        document.getElementById('field_old_img').value = "";
-        document.querySelector('form.modal-content').reset();
+        document.getElementById('modal_title').innerText = "➕ 新增作品資料";
+        document.getElementById('modal_action').value = "add_painting";
+        document.getElementById('painting_id').value = "";
+        document.getElementById('old_image_url').value = "";
         
-        imagePreview.style.display = 'none';
-        previewText.style.display = 'block';
-        workModal.show();
+        // 重設表單所有欄位
+        document.querySelectorAll('#paintingModal input:not([type=hidden]), #paintingModal textarea, #paintingModal select').forEach(el => el.value = "");
+        document.getElementById('p_finish').value = "已完成"; // 預設值
+        
+        modal.show();
     }
 
+    // 開啟「編輯」視窗並填入舊資料
     function openEditModal(p) {
-        document.getElementById('modalTitle').innerText = "📝 編輯作品: " + p.name;
-        document.getElementById('formAction').value = "edit_painting";
-        document.getElementById('field_id').value = p.id;
-        document.getElementById('field_old_img').value = p.image_url;
+        document.getElementById('modal_title').innerText = "📝 編輯作品：" + p.name;
+        document.getElementById('modal_action').value = "edit_painting";
+        
+        document.getElementById('painting_id').value = p.id;
+        document.getElementById('p_name').value = p.name || "";
+        document.getElementById('p_price').value = p.price || "";
+        document.getElementById('p_size').value = p.size || "";
+        document.getElementById('p_material').value = p.material || "";
+        document.getElementById('p_display_date').value = p.display_date || "";
+        document.getElementById('p_finish').value = p.finish || "已完成";
+        document.getElementById('p_lead_time').value = p.lead_time || "";
+        document.getElementById('p_frame_time').value = p.frame_time || "";
+        document.getElementById('p_description_short').value = p.description_short || "";
+        document.getElementById('p_poetic_text').value = p.poetic_text || "";
+        document.getElementById('p_notices').value = p.notices || "";
+        document.getElementById('p_hand_painted_disclaimer').value = p.hand_painted_disclaimer || "";
+        document.getElementById('old_image_url').value = p.image_url || "";
 
-        document.getElementById('field_name').value = p.name || '';
-        document.getElementById('field_price').value = p.price || '';
-        document.getElementById('field_finish').value = p.finish || 'y';
-        document.getElementById('field_size').value = p.size || '';
-        document.getElementById('field_material').value = p.material || '';
-        document.getElementById('field_date').value = p.display_date || '';
-        document.getElementById('field_poetic').value = p.poetic_text || '';
-        document.getElementById('field_lead').value = p.lead_time || '';
-        document.getElementById('field_frame').value = p.frame_time || '';
-
-        if(p.image_url) {
-            imagePreview.src = p.image_url;
-            imagePreview.style.display = 'block';
-            previewText.style.display = 'none';
-        } else {
-            imagePreview.style.display = 'none';
-            previewText.style.display = 'block';
-        }
-
-        workModal.show();
+        modal.show();
     }
 </script>
+
 </body>
 </html>
