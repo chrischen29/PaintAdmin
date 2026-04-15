@@ -10,10 +10,12 @@
         :root { --primary-color: #6366f1; }
         body { background-color: #f8fafc; font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
         .navbar { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; }
-        .card { border: none; border-radius: 12px; transition: transform 0.2s; }
-        .table img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; }
+        .card { border: none; border-radius: 12px; }
+        .table img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; background: #eee; }
         .btn-primary { background-color: var(--primary-color); border: none; }
         .btn-primary:hover { background-color: #4338ca; }
+        .modal-header { background-color: #f8fafc; border-bottom: 1px solid #eee; }
+        .form-label { font-weight: 600; color: #475569; }
     </style>
 </head>
 <body>
@@ -31,7 +33,7 @@
 
 <div class="container my-5">
     {% if error_msg %}
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
         <i class="fas fa-exclamation-circle me-2"></i>{{ error_msg }}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -57,13 +59,19 @@
                     <tbody>
                         {% for p in paintings %}
                         <tr>
-                            <td class="ps-4"><img src="{{ p.image_url }}" alt="thumb"></td>
+                            <td class="ps-4">
+                                <img src="{{ p.image_url }}" alt="thumb" onerror="this.src='https://placehold.co/60x60?text=No+Img'">
+                            </td>
                             <td class="fw-bold">{{ p.name }}</td>
                             <td>{{ p.price }}</td>
                             <td>
-                                <span class="badge {% if p.finish == '已完成' %}bg-success{% elif p.finish == '預訂中' %}bg-warning{% else %}bg-secondary{% endif %}">
-                                    {{ p.finish }}
-                                </span>
+                                {% if p.finish == '已完成' or p.finish == 'y' %}
+                                    <span class="badge bg-success">已完成</span>
+                                {% elif p.finish == '製作中' or p.finish == 'm' %}
+                                    <span class="badge bg-warning text-dark">製作中</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">未預訂</span>
+                                {% endif %}
                             </td>
                             <td class="text-muted small">{{ p.size }}</td>
                             <td class="text-end pe-4">
@@ -90,7 +98,7 @@
 <div class="modal fade" id="paintingModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow">
-            <form method="POST" enctype="multipart/form-data">
+            <form id="paintingForm" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" id="modal_action" value="add_painting">
                 <input type="hidden" name="id" id="painting_id">
                 <input type="hidden" name="old_image_url" id="old_image_url">
@@ -102,11 +110,11 @@
                 <div class="modal-body p-4">
                     <div class="row g-3">
                         <div class="col-md-8">
-                            <label class="form-label fw-bold">作品名稱 *</label>
+                            <label class="form-label">作品名稱 *</label>
                             <input type="text" name="name" id="p_name" class="form-control" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold">價格</label>
+                            <label class="form-label">價格</label>
                             <input type="text" name="price" id="p_price" class="form-control">
                         </div>
                         <div class="col-md-4">
@@ -122,11 +130,11 @@
                             <input type="text" name="display_date" id="p_display_date" class="form-control">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold text-primary">狀態</label>
+                            <label class="form-label text-primary">當前狀態</label>
                             <select name="finish" id="p_finish" class="form-select">
-                                <option value="m">製作中</option>
-                                <option value="n" selected>未預訂</option>
-                                <option value="y">已蒙收藏</option>
+                                <option value="製作中">製作中</option>
+                                <option value="未預訂" selected>未預訂</option>
+                                <option value="已完成">已完成</option>
                             </select>
                         </div>
                         <div class="col-md-4">
@@ -146,17 +154,17 @@
                             <textarea name="poetic_text" id="p_poetic_text" class="form-control" rows="3"></textarea>
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-bold">注意事項</label>
+                            <label class="form-label">注意事項</label>
                             <textarea name="notices" id="p_notices" class="form-control" rows="3"></textarea>
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-bold text-danger">手繪免責聲明</label>
-                            <textarea name="hand_painted_disclaimer" id="p_hand_painted_disclaimer" class="form-control" rows="3"></textarea>
+                            <label class="form-label text-danger">手繪免責聲明</label>
+                            <textarea name="hand_painted_disclaimer" id="p_hand_painted_disclaimer" class="form-control" rows="2"></textarea>
                         </div>
                         <div class="col-12 border-top pt-3">
                             <label class="form-label fw-bold">作品圖片</label>
                             <input type="file" name="file" class="form-control" accept="image/*">
-                            <div class="form-text mt-1 text-muted">若為編輯且不更換圖片，請留空。</div>
+                            <div class="form-text mt-1">編輯作品時，若不更換圖片請留空。</div>
                         </div>
                     </div>
                 </div>
@@ -172,34 +180,35 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    const modal = new bootstrap.Modal(document.getElementById('paintingModal'));
+    const paintingModal = new bootstrap.Modal(document.getElementById('paintingModal'));
+    const pForm = document.getElementById('paintingForm');
 
     // 開啟「新增」視窗
     function openAddModal() {
         document.getElementById('modal_title').innerText = "➕ 新增作品資料";
         document.getElementById('modal_action').value = "add_painting";
+        
+        // 清空表單
+        pForm.reset();
         document.getElementById('painting_id').value = "";
         document.getElementById('old_image_url').value = "";
         
-        // 重設表單所有欄位
-        document.querySelectorAll('#paintingModal input:not([type=hidden]), #paintingModal textarea, #paintingModal select').forEach(el => el.value = "");
-        document.getElementById('p_finish').value = "已完成"; // 預設值
-        
-        modal.show();
+        paintingModal.show();
     }
 
-    // 開啟「編輯」視窗並填入舊資料
+    // 開啟「編輯」視窗
     function openEditModal(p) {
-        document.getElementById('modal_title').innerText = "📝 編輯作品：" + p.name;
+        document.getElementById('modal_title').innerText = "📝 編輯作品：" + (p.name || "未命名");
         document.getElementById('modal_action').value = "edit_painting";
         
-        document.getElementById('painting_id').value = p.id;
+        // 填充資料
+        document.getElementById('painting_id').value = p.id || "";
         document.getElementById('p_name').value = p.name || "";
         document.getElementById('p_price').value = p.price || "";
         document.getElementById('p_size').value = p.size || "";
         document.getElementById('p_material').value = p.material || "";
         document.getElementById('p_display_date').value = p.display_date || "";
-        document.getElementById('p_finish').value = p.finish || "已完成";
+        document.getElementById('p_finish').value = p.finish || "未預訂";
         document.getElementById('p_lead_time').value = p.lead_time || "";
         document.getElementById('p_frame_time').value = p.frame_time || "";
         document.getElementById('p_description_short').value = p.description_short || "";
@@ -208,7 +217,7 @@
         document.getElementById('p_hand_painted_disclaimer').value = p.hand_painted_disclaimer || "";
         document.getElementById('old_image_url').value = p.image_url || "";
 
-        modal.show();
+        paintingModal.show();
     }
 </script>
 
