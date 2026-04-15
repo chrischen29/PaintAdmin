@@ -10,7 +10,10 @@ app.secret_key = os.environ.get('SECRET_KEY', 'helen_art_secret_key')
 
 # --- 配置設定 ---
 IMGBB_API_KEY = "bebac0016394472c839f571f730b34e1"
-GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx-CX_AKQ_XbD3QUCBwZLG71hkU5HdcfpUolN9FmwRir0GUio3JBgPUPcBWJ2Vfd36pOw/exec"
+# --- Paintadmin_Data設定 ---
+#GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx-CX_AKQ_XbD3QUCBwZLG71hkU5HdcfpUolN9FmwRir0GUio3JBgPUPcBWJ2Vfd36pOw/exec"
+# --- Paint_Data設定 ---
+GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwWoqXFoMgdK-CLwMiWYW6NbnmAIkXk37YleYSDjcJRz9-TZgYqU-R_euToUKURJ2ikkw/exec"
 
 # ==========================================
 # 1. 管理員認證邏輯
