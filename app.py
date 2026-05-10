@@ -2,7 +2,7 @@ import os
 import base64
 import time
 import requests
-from flask import Flask, render_template, request, Response, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, Response, redirect, url_for, session, flash
 from functools import wraps
 
 app = Flask(__name__)
@@ -17,29 +17,36 @@ DEFAULT_SOURCE = "Paint_Data"
 IMGBB_API_KEY = "bebac0016394472c839f571f730b34e1"
 
 # ==========================================
-# 1. 管理員認證
+# 1. 管理員認證（改用 session，不用 Basic Auth）
 # ==========================================
 ADMIN_USER = "admin"
-ADMIN_PASSWORD = "123" 
-
-def check_auth(username, password):
-    return username == ADMIN_USER and password == ADMIN_PASSWORD
-
-def authenticate():
-    return Response('認證失敗', 401, {'WWW-Authenticate': 'Basic realm="Login"'})
+ADMIN_PASSWORD = "123"
 
 def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
+        if username == ADMIN_USER and password == ADMIN_PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('admin'))
+        else:
+            error = '帳號或密碼錯誤，請再試一次。'
+    return render_template('login.html', error=error)
+
 @app.route('/logout')
 def logout():
-    return Response('<h3>正在登出...</h3><script>var xhr=new XMLHttpRequest();xhr.open("GET","/admin",true,"logout","logout");xhr.send();setTimeout(function(){window.location.href="/admin";},500);</script>', 401, {'WWW-Authenticate': 'Basic realm="Logout"'})
+    session.clear()
+    return redirect(url_for('login'))
 
 # ==========================================
 # 2. 路由設定
@@ -47,7 +54,6 @@ def logout():
 
 @app.route('/')
 def index():
-    # 前台也可以透過 ?source= 切換，預設用 Paint_Data
     source_key = request.args.get('source', DEFAULT_SOURCE)
     gas_url = GAS_SOURCES.get(source_key, GAS_SOURCES[DEFAULT_SOURCE])
     
@@ -118,7 +124,6 @@ def admin():
             except Exception as e:
                 error_msg = f"操作失敗: {e}"
 
-    # 抓取清單
     try:
         res = requests.get(gas_url, timeout=15)
         if res.status_code == 200:
