@@ -65,8 +65,8 @@
                             <td class="fw-bold">{{ p.name }}</td>
                             <td>{{ p.price }}</td>
                             <td>
-                                {% if p.finish == '已完成' or p.finish == 'y' %}
-                                    <span class="badge bg-success">已完成</span>
+                                {% if p.finish == '已蒙收藏' or p.finish == 'y' %}
+                                    <span class="badge bg-success">已蒙收藏</span>
                                 {% elif p.finish == '製作中' or p.finish == 'm' %}
                                     <span class="badge bg-warning text-dark">製作中</span>
                                 {% else %}
