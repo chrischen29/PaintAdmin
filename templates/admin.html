@@ -78,6 +78,9 @@
                                 <button class="btn btn-outline-primary btn-sm me-1" onclick='openEditModal({{ p | tojson }})'>
                                     <i class="fas fa-edit"></i> 編輯
                                 </button>
+                                <button class="btn btn-outline-success btn-sm me-1" onclick='openCopyModal({{ p | tojson }})'>
+                                    <i class="fas fa-copy"></i> 複製
+                                </button>
                                 <form method="POST" style="display:inline;" onsubmit="return confirm('確定要刪除這件作品嗎？');">
                                     <input type="hidden" name="action" value="delete_painting">
                                     <input type="hidden" name="id" value="{{ p.id }}">
@@ -165,6 +168,7 @@
                             <label class="form-label fw-bold">作品圖片</label>
                             <input type="file" name="file" class="form-control" accept="image/*">
                             <div class="form-text mt-1">編輯作品時，若不更換圖片請留空。</div>
+                            <div id="copy_img_hint"></div>
                         </div>
                     </div>
                 </div>
@@ -192,7 +196,42 @@
         pForm.reset();
         document.getElementById('painting_id').value = "";
         document.getElementById('old_image_url').value = "";
+        document.getElementById('copy_img_hint').innerHTML = "";
         
+        paintingModal.show();
+    }
+
+    // 開啟「複製」視窗（帶入所有欄位，但當作新增）
+    function openCopyModal(p) {
+        document.getElementById('modal_title').innerText = "📋 複製作品：" + (p.name || "未命名");
+        document.getElementById('modal_action').value = "add_painting";
+
+        // 清空 id，讓後端當作新增
+        document.getElementById('painting_id').value = "";
+        document.getElementById('old_image_url').value = "";
+
+        // 填充來源作品的資料，名稱加上「（複製）」提示
+        document.getElementById('p_name').value = (p.name || "") + "（複製）";
+        document.getElementById('p_price').value = p.price || "";
+        document.getElementById('p_size').value = p.size || "";
+        document.getElementById('p_material').value = p.material || "";
+        document.getElementById('p_display_date').value = p.display_date || "";
+        document.getElementById('p_finish').value = p.finish || "未預訂";
+        document.getElementById('p_lead_time').value = p.lead_time || "";
+        document.getElementById('p_frame_time').value = p.frame_time || "";
+        document.getElementById('p_description_short').value = p.description_short || "";
+        document.getElementById('p_poetic_text').value = p.poetic_text || "";
+        document.getElementById('p_notices').value = p.notices || "";
+        document.getElementById('p_hand_painted_disclaimer').value = p.hand_painted_disclaimer || "";
+
+        // 顯示原圖提示
+        const imgHint = document.getElementById('copy_img_hint');
+        if (p.image_url) {
+            imgHint.innerHTML = `<img src="${p.image_url}" style="height:50px;border-radius:6px;margin-top:6px;vertical-align:middle;" onerror="this.style.display='none'"> <span class="text-muted small ms-2">原作品圖片（複製後請重新上傳新圖片）</span>`;
+        } else {
+            imgHint.innerHTML = "";
+        }
+
         paintingModal.show();
     }
 
@@ -216,6 +255,7 @@
         document.getElementById('p_notices').value = p.notices || "";
         document.getElementById('p_hand_painted_disclaimer').value = p.hand_painted_disclaimer || "";
         document.getElementById('old_image_url').value = p.image_url || "";
+        document.getElementById('copy_img_hint').innerHTML = "";
 
         paintingModal.show();
     }
