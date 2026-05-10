@@ -54,6 +54,10 @@ def logout():
 
 @app.route('/')
 def index():
+    return redirect(url_for('login'))
+
+@app.route('/gallery')
+def gallery():
     source_key = request.args.get('source', DEFAULT_SOURCE)
     gas_url = GAS_SOURCES.get(source_key, GAS_SOURCES[DEFAULT_SOURCE])
     
